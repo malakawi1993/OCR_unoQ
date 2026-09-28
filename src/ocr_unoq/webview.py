@@ -27,6 +27,8 @@ def run_web_preview(
     host: str = "0.0.0.0",
     port: int = DEFAULT_PORT,
     ocr_interval: float = 1.5,
+    max_fps: float = 12.0,
+    preview_width: int = 640,
 ) -> None:
     """Start the web preview and block until Ctrl+C.
 
@@ -36,12 +38,17 @@ def run_web_preview(
         host: Address to listen on.
         port: Port for the web page.
         ocr_interval: Seconds between OCR passes.
+        max_fps: Max frames per second to decode from the camera.
+        preview_width: Width of the JPEG sent to the browser (0 = full size).
+            Smaller is much cheaper to encode on a small board.
     """
     from flask import Flask, Response
 
     app = Flask(__name__)
 
-    live = LiveOCR(camera, reader, ocr_interval=ocr_interval).start()
+    live = LiveOCR(
+        camera, reader, ocr_interval=ocr_interval, max_fps=max_fps
+    ).start()
 
     def generate():
         import cv2
@@ -58,7 +65,19 @@ def run_web_preview(
 
             from .ocr import draw_results, status_line
 
+            # Draw on the full-size frame (boxes are in full-frame coords),
+            # then shrink — a 1080p JPEG costs several times more CPU to
+            # encode than a 640px one on small boards.
             display = draw_results(frame, results)
+            if preview_width > 0:
+                height, width = display.shape[:2]
+                if width > preview_width:
+                    scale = preview_width / width
+                    display = cv2.resize(
+                        display,
+                        (preview_width, int(height * scale)),
+                        interpolation=cv2.INTER_AREA,
+                    )
 
             age = (
                 f"{time.monotonic() - last_run:.1f}s ago" if last_run else "never"

@@ -13,7 +13,6 @@ Everything else (models, thresholds) has sensible defaults.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -32,6 +31,11 @@ DEFAULT_DICT = MODELS_DIR / "languages" / "english" / "v4" / "dict.txt"
 DEFAULT_MIN_CONFIDENCE = 0.40
 DEFAULT_BOX_THRESH = 0.5
 DEFAULT_MAX_WIDTH = 640
+# Limit the ONNX runtime's threads so OCR leaves CPU for the camera feed.
+# -1 = let onnxruntime decide (all cores) — fine on a desktop, too greedy
+# on a 4-core A53 board where the feed also needs to run.
+DEFAULT_INTRA_OP_THREADS = 2
+DEFAULT_INTER_OP_THREADS = 1
 
 
 @dataclass
@@ -80,6 +84,8 @@ class TextReader:
         det_model_path: str | Path | None = None,
         rec_model_path: str | Path | None = None,
         dict_path: str | Path | None = None,
+        intra_op_threads: int = DEFAULT_INTRA_OP_THREADS,
+        inter_op_threads: int = DEFAULT_INTER_OP_THREADS,
     ) -> None:
         from rapidocr_onnxruntime import RapidOCR
 
@@ -103,6 +109,8 @@ class TextReader:
             det_model_path=str(det),
             rec_model_path=str(rec),
             rec_keys_path=str(dictionary),
+            intra_op_num_threads=intra_op_threads,
+            inter_op_num_threads=inter_op_threads,
         )
 
     def __call__(self, image: Any) -> list[TextResult]:

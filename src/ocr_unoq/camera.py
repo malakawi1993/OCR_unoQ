@@ -21,6 +21,11 @@ os.environ.setdefault(
     "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|max_delay;500000",
 )
 
+# Quiet down FFmpeg's warning spam ("Received packet without a start chunk;
+# dropping frame" is normal for MJPEG-over-RTSP — a few frames get dropped
+# when packets are lost, and the stream just keeps going). 16 = errors only.
+os.environ.setdefault("OPENCV_FFMPEG_LOGLEVEL", "16")
+
 
 class Camera:
     """Grabs frames from an RTSP stream or a local camera.

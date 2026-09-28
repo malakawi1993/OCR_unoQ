@@ -52,8 +52,12 @@ camera ──RTSP──> OpenCV frame ──downscale──> RapidOCR ──> te
 | Trick                     | Where                    | Effect                                                 |
 | ------------------------- | ------------------------ | ------------------------------------------------------ |
 | ONNX Runtime, CPU only    | `pyproject.toml`         | no GPU, no PaddlePaddle/PyTorch (~300–500MB RAM total) |
+| Small v4 models (default) | `download_models.py`     | ~12 MB vs 92 MB — much faster on A53 cores             |
 | Downscale frame to 640px  | `TextReader.max_width`   | OCR cost scales with pixels — biggest speedup          |
-| OCR on a timer (1.5s)     | demo loops               | text rarely changes; saves most of the CPU             |
+| OCR on a timer (1.5s)     | `LiveOCR`                | text rarely changes; saves most of the CPU             |
+| Grab throttled to 12 fps  | `LiveOCR(max_fps=...)`   | no decoding frames nobody will ever see                |
+| OCR limited to 2 threads  | `TextReader(intra_op_threads=...)` | leaves cores for the camera feed + web stream |
+| 640px preview JPEGs       | `run_web_preview(preview_width=...)` | encoding small JPEGs is far cheaper on A53 cores |
 | Auto-reconnecting camera  | `Camera.grab()`          | RTSP streams drop; it reopens them for you             |
 
 ## Setup (desktop)
@@ -107,10 +111,18 @@ reader = TextReader(
     min_confidence=0.40,   # drop results below this score (default 0.40)
     box_thresh=0.5,        # detection sensitivity; lower = finds faint text
     max_width=640,         # frames are downscaled to this width before OCR
+    intra_op_threads=2,    # CPU threads for OCR (-1 = all cores, desktops)
+    inter_op_threads=1,
 )
 camera = Camera(url, mirror=True)   # flip if your camera is mirrored
 ```
 
+- **Feed stalling / CPU at 100% (UNO Q)?** the defaults already save CPU:
+  OCR is limited to 2 threads, `LiveOCR` decodes at most 12 fps, and the web
+  preview encodes 640px JPEGs. If it's still hot, lower them further:
+  `run_web_preview(..., max_fps=8, preview_width=480)` and
+  `TextReader(intra_op_threads=1)`. On a desktop, set
+  `intra_op_threads=-1` to use all cores for faster OCR.
 - **Too slow?** run OCR less often (raise the interval in your loop), or lower `max_width`.
 - **Missing small text?** raise `max_width` (e.g. 960) — costs CPU.
 - **Garbage results?** lower `min_confidence` to 0.3, or check the camera angle/lighting.

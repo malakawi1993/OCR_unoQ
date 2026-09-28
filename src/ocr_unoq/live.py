@@ -33,12 +33,23 @@ class LiveOCR:
         camera: A Camera (or anything with ``.grab()`` / ``.release()``).
         reader: A TextReader (or anything callable on a frame).
         ocr_interval: Seconds between OCR passes (default 1.5).
+        max_fps: Never decode more than this many frames per second
+            (default 12). The preview shows ~10 fps, so decoding the full
+            camera rate wastes CPU — and on small boards like the UNO Q,
+            that waste is what makes the feed stall.
     """
 
-    def __init__(self, camera: Any, reader: Any, ocr_interval: float = 1.5) -> None:
+    def __init__(
+        self,
+        camera: Any,
+        reader: Any,
+        ocr_interval: float = 1.5,
+        max_fps: float = 12.0,
+    ) -> None:
         self._camera = camera
         self._reader = reader
         self.ocr_interval = ocr_interval
+        self.max_fps = max_fps
 
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -110,14 +121,25 @@ class LiveOCR:
     # -- internals ------------------------------------------------------------
 
     def _grab_loop(self) -> None:
-        """Pull frames as fast as the camera sends them (keeps the feed live)."""
+        """Pull frames, throttled to ``max_fps`` (keeps the feed live).
+
+        Decoding more frames than the preview can show just burns CPU —
+        on a small board that starves the rest of the app and the RTSP
+        stream starts dropping frames.
+        """
+        target = 1.0 / self.max_fps if self.max_fps > 0 else 0.0
         while not self._stop_event.is_set():
+            started = time.monotonic()
             frame = self._camera.grab()
             if frame is None:
                 time.sleep(0.25)
                 continue
             with self._lock:
                 self._frame = frame
+            # Sleep out the rest of this frame's time slice.
+            elapsed = time.monotonic() - started
+            if target > 0 and elapsed < target:
+                time.sleep(target - elapsed)
 
     def _ocr_loop(self) -> None:
         """Read text from the latest frame on a timer (never blocks the feed)."""
