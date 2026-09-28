@@ -1,0 +1,15 @@
+# app.yaml: Arduino App Lab configuration for OCR unoQ
+#
+# Real-time OCR (RapidOCR / ONNX, CPU-only) with a live web preview.
+#
+# To run on the board:
+#   arduino-app-cli app start .
+#   OR: source .venv/bin/activate && python3 python/main.py
+#
+# Access the web preview at http://<device-ip>:5001
+
+name: OCR unoQ
+description: "Real-time text detection from a camera using RapidOCR (ONNX, CPU-only) with a live web preview"
+icon: "\U0001F4DD"
+ports: [5001]
+bricks: []

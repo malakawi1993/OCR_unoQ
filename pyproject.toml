@@ -1,0 +1,23 @@
+[project]
+name = "ocr-unoq"
+version = "0.1.0"
+description = "RTSP camera text detection using RapidOCR (ONNX, CPU-only)"
+readme = "README.md"
+authors = [
+    { name = "Malakawi", email = "pmalakawi@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "rapidocr-onnxruntime>=1.4.4",
+    # GUI OpenCV for the desktop preview window (the UNO Q app uses
+    # opencv-python-headless instead — see python/requirements.txt)
+    "opencv-python>=4.10",
+    "flask>=2.0.0,<4",
+]
+
+[project.optional-dependencies]
+models = ["huggingface-hub"]
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"

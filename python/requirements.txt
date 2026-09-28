@@ -1,0 +1,4 @@
+# App Lab dependencies (headless OpenCV — the UNO Q has no monitor)
+rapidocr-onnxruntime>=1.4.4
+opencv-python-headless>=4.10
+flask>=2.0.0,<4
